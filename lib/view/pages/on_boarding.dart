@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:polydet/interfaces/view/i_onboarding_subview.dart';
 import 'package:polydet/interfaces/view/i_page_with_route.dart';
-import 'package:polydet/interfaces/view/i_subview_with_description.dart';
 import 'package:polydet/types/secure_storage_type.dart';
 import 'package:polydet/view/elements/app_pageview.dart';
 import 'package:polydet/view/elements/colored_header.dart';
-import 'package:polydet/view/elements/flexible_text_with_padding.dart';
 import 'package:polydet/view/subview/OnBoarding/oasis_login_page.dart';
 import 'package:polydet/view/subview/OnBoarding/secure_storage_selection.dart';
 import 'package:provider/provider.dart';
@@ -62,17 +59,14 @@ class FirstSetupState extends ChangeNotifier {
 
 class _OnBoardingPageComponentState extends State<OnBoardingPageComponent> {
   var _submenuIndex = 0;
-  var isSubmenuProcessing = false;
   // first submenu
-  Widget submenu = const SecureStorageSelection();
+  late Widget submenu;
 
-
-  void nextSubview(BuildContext context) {
+  void nextSubview() {
     _submenuIndex += 1;
     if (_submenuIndex == 1) {
       setState(() {
-        submenu = OasisLoginPage();
-        isSubmenuProcessing = false;
+        submenu = OasisLoginPage(changeSubview: nextSubview,);
       });
     } else {
       throw RangeError("Invalid OnBoarding Submenu !");
@@ -80,22 +74,16 @@ class _OnBoardingPageComponentState extends State<OnBoardingPageComponent> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    submenu = SecureStorageSelection(changeSubview: nextSubview,);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    var mediaq = MediaQuery.of(context);
     var theme = Theme.of(context);
-
-
-    // I trust myself
-    var callback = (submenu as IOnBoardingSubView).onConfirm();
-
     var headerTextStyle = theme.textTheme.headlineMedium!
         .merge(TextStyle(color: theme.colorScheme.onPrimary));
-
-    var descrTextStyle = theme.textTheme.bodyLarge!;
-    List<String>? descriptionTexts;
-    if (submenu is ISubViewWithDescription) {
-      descriptionTexts = (submenu as ISubViewWithDescription).getDescription();
-    }
 
     return Column(
       mainAxisSize: MainAxisSize.max,
@@ -104,33 +92,7 @@ class _OnBoardingPageComponentState extends State<OnBoardingPageComponent> {
           color: theme.colorScheme.primary,
           textStyle: headerTextStyle,
         ),
-        Expanded(child: OnBoardingSubMenuAnimation(descriptionTexts: descriptionTexts, submenu: submenu)),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 100),
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              ElevatedButton(
-                  onPressed: isSubmenuProcessing ? null : () {
-                    setState(() {
-                      isSubmenuProcessing = true;
-                    });
-                    callback.then((value) {
-                      if (value) {
-                        // move on
-                        nextSubview(context);
-                      } else {
-                        setState(() {
-                          isSubmenuProcessing = false;
-                        });
-                      }
-                    }).onError((error, stackTrace) => null);
-                  },
-                  child: const Text("Confirm")),
-
-            ],
-          ),
-        ),
+        Expanded(child: OnBoardingSubMenuAnimation(submenu: submenu)),
       ],
     );
   }
@@ -139,11 +101,9 @@ class _OnBoardingPageComponentState extends State<OnBoardingPageComponent> {
 class OnBoardingSubMenuAnimation extends StatelessWidget {
   const OnBoardingSubMenuAnimation({
     super.key,
-    required this.descriptionTexts,
     required this.submenu,
   });
 
-  final List<String>? descriptionTexts;
   final Widget submenu;
 
   @override
@@ -160,57 +120,9 @@ class OnBoardingSubMenuAnimation extends StatelessWidget {
             child: child,
           );
         },
-        child: OnBoardingAnimatedChild(descriptionTexts: descriptionTexts, submenu: submenu),
+        child: submenu
       );
   }
-}
-
-class OnBoardingAnimatedChild extends StatelessWidget {
-  const OnBoardingAnimatedChild({
-    super.key,
-    required this.descriptionTexts,
-    required this.submenu,
-  });
-
-  final List<String>? descriptionTexts;
-  final Widget submenu;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      mainAxisSize: MainAxisSize.max,
-      children: [
-        if (descriptionTexts != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: 2, horizontal: 4),
-            child: Card(
-              child: Column(
-                children: [
-                  for (final str in descriptionTexts!)
-                    FlexibleTextWithPadding(
-                      text: str,
-                      horizontal: 4,
-                      vertical: 5,
-                    ),
-                ],
-              ),
-            ),
-          ),
-        Expanded(child: submenu),
-      ],
-    );
-  }
-}
-
-class OnBoardingAnimatedChild2 extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    // TODO: implement build
-    throw UnimplementedError();
-  }
-
 }
 
 class OnBoardingHeader extends StatelessWidget {
